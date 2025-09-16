@@ -1,6 +1,7 @@
 .DS_Store
 ./detections/.venv
+./detections/model_weights
 ./sfm/.venv
-
+./tracking/.venv
 
 .venv
