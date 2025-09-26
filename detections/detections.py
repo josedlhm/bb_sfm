@@ -11,8 +11,11 @@ from sahi.predict import get_sliced_prediction
 CONF_THRESH = 0.5
 DEVICE      = "cpu"  # "cuda" if available
 
-WEIGHTS_PATH = "model_weights/arandanos_nuevos.pth"
-CONFIG_PATH  = "model_weights/arandanos_nuevos.yaml"
+BASE_DIR    = Path(__file__).parent.resolve()
+
+
+WEIGHTS_PATH = str(BASE_DIR / "model_weights" / "arandanos_18.pth")
+CONFIG_PATH  = str(BASE_DIR / "model_weights" / "arandanos_18.yaml")
 
 SLICE_HEIGHT = 640
 SLICE_WIDTH  = 640
@@ -22,8 +25,27 @@ POSTPROC     = "GREEDYNMM"
 
 DETS_JSON = "detections.json"
 
-WRITE_ANNOTATED = False
+WRITE_ANNOTATED = True
 ANNOTATED_SUBDIR = "annotated"
+
+
+
+
+FIXED_CLASS_COLORS = {
+    1: (0,   0, 255),   # cuajo  -> red
+    2: (255, 255, 255), # flor   -> white
+    3: (255, 0,   0),   # maduro -> blue
+    4: (0,   165, 255), # pinto  -> orange
+    5: (255, 0, 255),   # rosado -> pink
+    6: (0, 255, 0),     # verde  -> green
+}
+
+def color_for_class_id(cid: int) -> tuple[int, int, int]:
+    if cid in FIXED_CLASS_COLORS:
+        return FIXED_CLASS_COLORS[cid]
+    # fallback: deterministic random vivid color
+    rng = np.random.default_rng(int(cid) & 0xFFFFFFFF)
+    return tuple(int(x) for x in rng.integers(50, 255, size=3))
 # ───────────────────────────────────────────────────────────────────────────────
 
 EXTS = {".jpg", ".jpeg", ".png", ".bmp", ".tif", ".tiff", ".webp"}
@@ -138,9 +160,11 @@ def detect_for_capture(model: AutoDetectionModel, capture_root: Path) -> None:
             })
 
             # optional viz
+
             if WRITE_ANNOTATED and full_mask.any():
                 contours, _ = cv2.findContours(full_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-                cv2.drawContours(vis, contours, -1, (0, 255, 0), 1)
+                col_bgr = color_for_class_id(cls_id)   # ← pick class color
+                cv2.drawContours(vis, contours, -1, col_bgr, 1)
 
         if WRITE_ANNOTATED:
             cv2.imwrite(str(output_dir / ANNOTATED_SUBDIR / img_path.name), vis)
